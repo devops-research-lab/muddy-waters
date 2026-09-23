@@ -1,67 +1,61 @@
 name: rust
-
 on:
-  push:
-    branches:
-      - "main"
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
-  pull_request:
-    branches:
-      - "main"
-    paths:
-      - "**.rs"
-      - "**.toml"
-
-  # Allows running this workflow manually from the Actions tab
-  workflow_dispatch:
-
-
+  push: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 env:
   CARGO_TERM_COLOR: always
-
 jobs:
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Run cargo fmt
-        run: cargo fmt --all -- --check
-
-  clippy:
-    name: Clippy
-    needs: [ fmt ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo -V && rustc -V
-      - name: Run clippy 
-        run: cargo clippy --all --tests --all-features --all-targets -- -D warnings
-
-  rustdoc:
-    name: Rustdoc
-    needs: [ fmt ]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: muddy
-        run: >
-          cargo rustdoc -p muddy --all-features -- -D warnings
   tests:
     name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: run tests
-        run: cargo test
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+    - name: run tests
+      run: cargo test
+  fmt:
+    runs-on: ubuntu-latest
+    name: Rustfmt
+    steps:
+    - name: stepify-probe-fmt
+      run: echo stepify-probe-fmt
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+    - name: Run cargo fmt
+      run: cargo fmt --all -- --check
+    - name: stepify-tail-fmt
+      run: echo stepify-tail-fmt
+      id: _bre_fmt
+    - name: stepify-probe-clippy
+      run: echo stepify-probe-clippy
+    - name: stepify-fault-clippy
+      run: exit 1
+    - uses: dtolnay/rust-toolchain@stable
+    - run: cargo -V && rustc -V
+    - name: Run clippy
+      run: cargo clippy --all --tests --all-features --all-targets -- -D warnings
+    - name: stepify-tail-clippy
+      run: echo stepify-tail-clippy
+    - name: stepify-probe-rustdoc
+      run: echo stepify-probe-rustdoc
+      if: '!cancelled() && steps._bre_fmt.conclusion == ''success'''
+      id: _m_rustdoc
+    - uses: dtolnay/rust-toolchain@stable
+      if: '!cancelled() && steps._bre_fmt.conclusion == ''success'' && steps._m_rustdoc.conclusion !=
+        ''failure'''
+      id: _m_rustdoc_1
+    - name: muddy
+      run: 'cargo rustdoc -p muddy --all-features -- -D warnings
+
+        '
+      if: '!cancelled() && steps._bre_fmt.conclusion == ''success'' && steps._m_rustdoc.conclusion !=
+        ''failure'' && steps._m_rustdoc_1.conclusion != ''failure'''
+      id: _m_rustdoc_2
+    - name: stepify-tail-rustdoc
+      run: echo stepify-tail-rustdoc
+      if: '!cancelled() && steps._bre_fmt.conclusion == ''success'' && steps._m_rustdoc.conclusion !=
+        ''failure'' && steps._m_rustdoc_1.conclusion != ''failure'' && steps._m_rustdoc_2.conclusion !=
+        ''failure'''
